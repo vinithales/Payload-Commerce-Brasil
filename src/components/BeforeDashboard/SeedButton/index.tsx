@@ -1,20 +1,14 @@
 'use client'
 
 import React, { Fragment, useCallback, useState, MouseEvent } from 'react'
-import { toast } from '@payloadcms/ui'
+import { toast, useTranslation } from '@payloadcms/ui'
 
 import './index.scss'
-
-const SuccessMessage: React.FC = () => (
-  <div>
-    Database seeded! You can now{' '}
-    <a target="_blank" href="/">
-      visit your website
-    </a>
-  </div>
-)
+import { adminText } from '@/translations'
 
 export const SeedButton: React.FC = () => {
+  const { i18n } = useTranslation()
+  const text = (value: Parameters<typeof adminText>[0]) => adminText(value, i18n.language)
   const [loading, setLoading] = useState(false)
   const [seeded, setSeeded] = useState(false)
   const [error, setError] = useState<unknown>(null)
@@ -24,15 +18,15 @@ export const SeedButton: React.FC = () => {
       e.preventDefault()
 
       if (seeded) {
-        toast.info('Database already seeded.')
+        toast.info(text('Database already seeded.'))
         return
       }
       if (loading) {
-        toast.info('Seeding already in progress.')
+        toast.info(text('Seeding already in progress.'))
         return
       }
       if (error) {
-        toast.error(`An error occurred, please refresh and try again.`)
+        toast.error(text('An error occurred, please refresh and try again.'))
         return
       }
 
@@ -48,7 +42,7 @@ export const SeedButton: React.FC = () => {
                     resolve(true)
                     setSeeded(true)
                   } else {
-                    reject('An error occurred while seeding.')
+                    reject(text('An error occurred while seeding.'))
                   }
                 })
                 .catch((error) => {
@@ -59,27 +53,27 @@ export const SeedButton: React.FC = () => {
             }
           }),
           {
-            loading: 'Seeding with data....',
-            success: <SuccessMessage />,
-            error: 'An error occurred while seeding.',
+            loading: text('Seeding with data....'),
+            success: text('Database seeded!'),
+            error: text('An error occurred while seeding.'),
           },
         )
       } catch (err) {
         setError(err)
       }
     },
-    [loading, seeded, error],
+    [loading, seeded, error, i18n.language],
   )
 
   let message = ''
-  if (loading) message = ' (seeding...)'
-  if (seeded) message = ' (done!)'
-  if (error) message = ` (error: ${error})`
+  if (loading) message = text(' (seeding...)')
+  if (seeded) message = text(' (done!)')
+  if (error) message = text('An error occurred while seeding.')
 
   return (
     <Fragment>
       <button className="seedButton" onClick={handleClick}>
-        Seed your database
+        {text('Seed your database')}
       </button>
       {message}
     </Fragment>

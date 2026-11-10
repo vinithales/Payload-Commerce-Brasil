@@ -21,6 +21,8 @@ export const productTshirtData: (
   categories,
 }) => {
   return {
+    visibility: 'visible',
+    sku: 'DEMO-TSHIRT-001',
     enableVariants: true,
     variantTypes: variantTypes,
     inventory: 0,

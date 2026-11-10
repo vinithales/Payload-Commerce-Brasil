@@ -1,7 +1,7 @@
 import { CallToAction } from '@/blocks/CallToAction/config'
 import { Content } from '@/blocks/Content/config'
 import { MediaBlock } from '@/blocks/MediaBlock/config'
-import { slugField } from 'payload'
+import { adminLabel } from '@/translations'
 import { generatePreviewPath } from '@/utilities/generatePreviewPath'
 import { CollectionOverride } from '@payloadcms/plugin-ecommerce/types'
 import {
@@ -18,7 +18,35 @@ import {
   InlineToolbarFeature,
   lexicalEditor,
 } from '@payloadcms/richtext-lexical'
-import { DefaultDocumentIDType, Where } from 'payload'
+import { DefaultDocumentIDType, slugField, Where, type Field } from 'payload'
+
+// Preserve the plugin's currency input and place the optional sale price below its row.
+const withPromotionalPrices = (fields: Field[]): Field[] =>
+  fields.map((field) => {
+    if (field.type !== 'group' || 'name' in field) return field
+    const price = field.fields
+      .flatMap((child) => (child.type === 'row' ? child.fields : [child]))
+      .find((child) => child.type === 'number' && /^priceIn[A-Z]+$/.test(child.name))
+    if (!price || price.type !== 'number') return field
+
+    return {
+      ...field,
+      fields: [
+        ...field.fields,
+        {
+          ...price,
+          name: price.name.replace('priceIn', 'promotionalPriceIn'),
+          label: adminLabel('Promotional price'),
+          required: false,
+          min: 0,
+          admin: {
+            ...price.admin,
+            description: adminLabel('Optional. Use the same currency as the regular price.'),
+          },
+        },
+      ],
+    }
+  })
 
 export const ProductsCollection: CollectionOverride = ({ defaultCollection }) => ({
   ...defaultCollection,
@@ -138,11 +166,46 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
               blocks: [CallToAction, Content, MediaBlock],
             },
           ],
-          label: 'Content',
+          label: adminLabel('Content'),
         },
         {
           fields: [
-            ...defaultCollection.fields,
+            ...withPromotionalPrices(defaultCollection.fields),
+            {
+              name: 'visibility',
+              label: adminLabel('Product visibility'),
+              type: 'select',
+              required: true,
+              defaultValue: 'visible',
+              options: [
+                { label: adminLabel('Not visible'), value: 'hidden' },
+                { label: adminLabel('Visible'), value: 'visible' },
+              ],
+            },
+            {
+              name: 'weight',
+              label: adminLabel('Weight (kg)'),
+              type: 'number',
+              required: true,
+              min: 0,
+            },
+            {
+              type: 'row',
+              fields: [
+                { name: 'height', label: adminLabel('Height (cm)'), type: 'number', min: 0, required: true },
+                { name: 'width', label: adminLabel('Width (cm)'), type: 'number', min: 0, required: true },
+                { name: 'length', label: adminLabel('Length (cm)'), type: 'number', min: 0, required: true },
+              ],
+            },
+            {
+              name: 'sku',
+              type: 'text',
+              required: true,
+              unique: true,
+              admin: {
+                description: adminLabel('Stock Keeping Unit - must be unique'),
+              },
+            },
             {
               name: 'relatedProducts',
               type: 'relationship',
@@ -166,7 +229,7 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
               relationTo: 'products',
             },
           ],
-          label: 'Product Details',
+          label: adminLabel('Product Details'),
         },
         {
           name: 'meta',

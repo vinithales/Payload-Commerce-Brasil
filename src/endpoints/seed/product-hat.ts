@@ -18,6 +18,8 @@ export const productHatData: (args: ProductArgs) => RequiredDataFromCollectionSl
   categories,
 }) => {
   return {
+    visibility: 'visible',
+    sku: 'DEMO-HAT-001',
     meta: {
       title: 'Hat | Payload Ecommerce Template',
       image: metaImage,

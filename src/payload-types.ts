@@ -300,6 +300,19 @@ export interface Product {
   };
   priceInUSDEnabled?: boolean | null;
   priceInUSD?: number | null;
+  /**
+   * Optional. Use the same currency as the regular price.
+   */
+  promotionalPriceInUSD?: number | null;
+  visibility: 'hidden' | 'visible';
+  weight: number;
+  height: number;
+  width: number;
+  length: number;
+  /**
+   * Stock Keeping Unit - must be unique
+   */
+  sku: string;
   relatedProducts?: (number | Product)[] | null;
   meta?: {
     title?: string | null;
@@ -1618,6 +1631,13 @@ export interface ProductsSelect<T extends boolean = true> {
   variants?: T;
   priceInUSDEnabled?: T;
   priceInUSD?: T;
+  promotionalPriceInUSD?: T;
+  visibility?: T;
+  weight?: T;
+  height?: T;
+  width?: T;
+  length?: T;
+  sku?: T;
   relatedProducts?: T;
   meta?:
     | T

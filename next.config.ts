@@ -10,6 +10,9 @@ import { redirects } from './redirects'
 const NEXT_PUBLIC_SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'
 
 const nextConfig: NextConfig = {
+  // Docker bind mounts on Windows may not forward file-change events.
+  // Use Next's polling option for Turbopack when Docker enables polling.
+  watchOptions: process.env.WATCHPACK_POLLING === 'true' ? { pollIntervalMs: 1000 } : undefined,
   // Temporarily required on Windows until Next.js fixes Turbopack Sass resolution.
   // See: https://github.com/vercel/next.js/issues/86431
   sassOptions: {
