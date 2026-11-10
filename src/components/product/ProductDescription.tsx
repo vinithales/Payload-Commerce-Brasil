@@ -1,14 +1,14 @@
 'use client'
 import type { Product, Variant } from '@/payload-types'
 
-import { RichText } from '@/components/RichText'
 import { AddToCart } from '@/components/Cart/AddToCart'
 import { Price } from '@/components/Price'
-import React, { Suspense } from 'react'
+import { RichText } from '@/components/RichText'
+import { Suspense } from 'react'
 
-import { VariantSelector } from './VariantSelector'
-import { useCurrency } from '@payloadcms/plugin-ecommerce/client/react'
 import { StockIndicator } from '@/components/product/StockIndicator'
+import { useCurrency } from '@payloadcms/plugin-ecommerce/client/react'
+import { VariantSelector } from './VariantSelector'
 
 export function ProductDescription({ product }: { product: Product }) {
   const { currency } = useCurrency()
@@ -53,8 +53,14 @@ export function ProductDescription({ product }: { product: Product }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-        <h1 className="text-2xl font-medium">{product.title}</h1>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-medium">{product.title}</h1>
+          {product.sku && (
+            <p className="text-xs text-muted-foreground">SKU: {product.sku}</p>
+          )}
+        </div>
+
         <div className="uppercase font-mono">
           {hasVariants ? (
             <Price highestAmount={highestAmount} lowestAmount={lowestAmount} />
@@ -63,6 +69,7 @@ export function ProductDescription({ product }: { product: Product }) {
           )}
         </div>
       </div>
+
       {product.description ? (
         <RichText className="" data={product.description} enableGutter={false} />
       ) : null}
