@@ -30,6 +30,7 @@ export const PaymentMethods: GlobalConfig = {
               virtual: true,
               label: adminLabel('Stripe secret key'),
               admin: {
+                readOnly: false,
                 description: adminLabel(
                   'Enter a Stripe API secret key starting with sk_test_ or sk_live_. Leave blank to keep the current key.',
                 ),
@@ -41,6 +42,7 @@ export const PaymentMethods: GlobalConfig = {
               virtual: true,
               label: adminLabel('Stripe webhook signing secret'),
               admin: {
+                readOnly: false,
                 description: adminLabel(
                   'Enter the signing secret for /api/payments/stripe/webhooks. Leave blank to keep the current secret.',
                 ),

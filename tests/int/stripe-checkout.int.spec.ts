@@ -39,6 +39,28 @@ const address: Partial<Address> = {
   postalCode: '01001-000',
 }
 
+it('keeps both virtual Stripe credential fields editable in the admin', async () => {
+  const { globals } = await config
+  const paymentMethods = globals.find(({ slug }) => slug === 'payment-methods')
+  const tabs = paymentMethods?.fields.find((field) => field.type === 'tabs')
+  const stripe = tabs?.tabs.find((tab) => 'name' in tab && tab.name === 'stripe')
+
+  expect(stripe?.fields).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        name: 'secretKey',
+        virtual: true,
+        admin: expect.objectContaining({ readOnly: false }),
+      }),
+      expect.objectContaining({
+        name: 'webhookSecret',
+        virtual: true,
+        admin: expect.objectContaining({ readOnly: false }),
+      }),
+    ]),
+  )
+})
+
 describe.skipIf(!testDatabase)('Stripe Checkout', () => {
   let payload: Payload
   let session: Stripe.Checkout.Session
