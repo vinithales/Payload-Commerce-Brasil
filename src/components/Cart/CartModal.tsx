@@ -17,14 +17,14 @@ import { usePathname } from 'next/navigation'
 import React, { useEffect, useMemo, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
-import { Product } from '@/payload-types'
+import type { Cart, Product } from '@/payload-types'
 import { getCartItemPrices } from '@/utilities/getCartItemPrices'
 import { DeleteItemButton } from './DeleteItemButton'
 import { EditItemQuantityButton } from './EditItemQuantityButton'
 import { OpenCartButton } from './OpenCart'
 
 export function CartModal() {
-  const { cart } = useCart()
+  const cart: Cart | undefined = useCart().cart
   const [isOpen, setIsOpen] = useState(false)
 
   const pathname = usePathname()

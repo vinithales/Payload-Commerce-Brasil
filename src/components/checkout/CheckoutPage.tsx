@@ -7,52 +7,68 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/providers/Auth'
-import { useTheme } from '@/providers/Theme'
-import { Elements } from '@stripe/react-stripe-js'
-import { loadStripe } from '@stripe/stripe-js'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import React, { Suspense, useCallback, useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 
 import { AddressItem } from '@/components/addresses/AddressItem'
 import { CreateAddressModal } from '@/components/addresses/CreateAddressModal'
 import { CheckoutAddresses } from '@/components/checkout/CheckoutAddresses'
-import { CheckoutForm } from '@/components/forms/CheckoutForm'
 import { FormItem } from '@/components/forms/FormItem'
-import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { Checkbox } from '@/components/ui/checkbox'
-import { cssVariables } from '@/cssVariables'
-import { Address } from '@/payload-types'
+import type { Address, Cart } from '@/payload-types'
 import { getCartItemPrices } from '@/utilities/getCartItemPrices'
 import { useAddresses, useCart, usePayments } from '@payloadcms/plugin-ecommerce/client/react'
-import { toast } from 'sonner'
 
-const apiKey = `${process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}`
-const stripe = loadStripe(apiKey)
+import {
+  quotePayment,
+  stripeMethods,
+  type CheckoutSettings,
+  type StripeMethod,
+} from '@/payments/methods'
+import { adminText } from '@/translations'
 
-export const CheckoutPage: React.FC = () => {
+type Props = { settings: CheckoutSettings; language: string }
+
+export const CheckoutPage: React.FC<Props> = ({ settings, language }) => {
   const { user } = useAuth()
-  const router = useRouter()
-  const { cart } = useCart()
+  const cart: Cart | undefined = useCart().cart
   const [error, setError] = useState<null | string>(null)
-  const { theme } = useTheme()
   /**
    * State to manage the email input for guest checkout.
    */
   const [email, setEmail] = useState('')
   const [emailEditable, setEmailEditable] = useState(true)
-  const [paymentData, setPaymentData] = useState<null | Record<string, unknown>>(null)
   const { initiatePayment } = usePayments()
   const { addresses } = useAddresses()
   const [shippingAddress, setShippingAddress] = useState<Partial<Address>>()
   const [billingAddress, setBillingAddress] = useState<Partial<Address>>()
   const [billingAddressSameAsShipping, setBillingAddressSameAsShipping] = useState(true)
   const [isProcessingPayment, setProcessingPayment] = useState(false)
+  const [selectedMethod, setSelectedMethod] = useState<StripeMethod>()
+  const redirecting = useRef(false)
+  const text = (value: Parameters<typeof adminText>[0]) => adminText(value, language)
 
   const cartIsEmpty = !cart || !cart.items || !cart.items.length
 
+  const subtotal = cart?.items?.reduce<number | null>((total, item) => {
+    if (total === null || typeof item.product !== 'object' || !item.product) return null
+
+    const { regularAmount, promotionalAmount } = getCartItemPrices(item.product, item.variant)
+    const price = promotionalAmount ?? regularAmount
+    return typeof price === 'number' ? total + price * item.quantity : null
+  }, 0)
+  const options = settings.methods.flatMap((method) => {
+    if (method !== 'card' && billingAddress?.country !== 'BR') return []
+
+    const quote = quotePayment(method, subtotal ?? 0, settings.brlExchangeRate)
+    return quote ? [{ method, ...quote }] : []
+  })
+  const selectedOption = options.find((option) => option.method === selectedMethod) ?? options[0]
   const canGoToPayment = Boolean(
-    (email || user) && billingAddress && (billingAddressSameAsShipping || shippingAddress),
+    ((email && !emailEditable) || user) &&
+    billingAddress &&
+    (billingAddressSameAsShipping || shippingAddress) &&
+    selectedOption,
   )
 
   // On initial load wait for addresses to be loaded and check to see if we can prefill a default one
@@ -67,56 +83,45 @@ export const CheckoutPage: React.FC = () => {
     }
   }, [addresses])
 
-  useEffect(() => {
-    return () => {
-      setShippingAddress(undefined)
-      setBillingAddress(undefined)
-      setBillingAddressSameAsShipping(true)
-      setEmail('')
-      setEmailEditable(true)
-    }
-  }, [])
+  async function goToPayment() {
+    if (!canGoToPayment || !selectedOption || redirecting.current) return
 
-  const initiatePaymentIntent = useCallback(
-    async (paymentID: string) => {
-      try {
-        const paymentData = (await initiatePayment(paymentID, {
-          additionalData: {
-            ...(email ? { customerEmail: email } : {}),
-            billingAddress,
-            shippingAddress: billingAddressSameAsShipping ? billingAddress : shippingAddress,
-          },
-        })) as Record<string, unknown>
+    redirecting.current = true
+    setProcessingPayment(true)
+    setError(null)
 
-        if (paymentData) {
-          setPaymentData(paymentData)
-        }
-      } catch (error) {
-        const errorData = error instanceof Error ? JSON.parse(error.message) : {}
-        let errorMessage = 'An error occurred while initiating payment.'
-
-        if (errorData?.cause?.code === 'OutOfStock') {
-          errorMessage = 'One or more items in your cart are out of stock.'
-        }
-
-        setError(errorMessage)
-        toast.error(errorMessage)
+    try {
+      const result = await initiatePayment('stripe', {
+        additionalData: {
+          ...(email ? { customerEmail: email } : {}),
+          billingAddress,
+          shippingAddress: billingAddressSameAsShipping ? billingAddress : shippingAddress,
+          paymentMethodType: selectedOption.method,
+          expectedAmount: selectedOption.amount,
+          language: language.startsWith('pt') ? 'pt' : 'en',
+        },
+      })
+      if (
+        !result ||
+        typeof result !== 'object' ||
+        !('url' in result) ||
+        typeof result.url !== 'string'
+      ) {
+        throw new Error('Stripe Checkout URL is missing.')
       }
-    },
-    [billingAddress, billingAddressSameAsShipping, shippingAddress],
-  )
-
-  if (!stripe) return null
-
-  if (cartIsEmpty && isProcessingPayment) {
-    return (
-      <div className="py-12 w-full items-center justify-center">
-        <div className="prose dark:prose-invert text-center max-w-none self-center mb-8">
-          <p>Processing your payment...</p>
-        </div>
-        <LoadingSpinner />
-      </div>
-    )
+      window.location.assign(result.url)
+    } catch (error) {
+      const outOfStock = error instanceof Error && error.message.includes('OutOfStock')
+      setError(
+        text(
+          outOfStock
+            ? 'One or more items in your cart are out of stock.'
+            : 'An error occurred while initiating payment.',
+        ),
+      )
+      redirecting.current = false
+      setProcessingPayment(false)
+    }
   }
 
   if (cartIsEmpty) {
@@ -196,7 +201,7 @@ export const CheckoutPage: React.FC = () => {
               actions={
                 <Button
                   variant={'outline'}
-                  disabled={Boolean(paymentData)}
+                  disabled={isProcessingPayment}
                   onClick={(e) => {
                     e.preventDefault()
                     setBillingAddress(undefined)
@@ -224,7 +229,7 @@ export const CheckoutPage: React.FC = () => {
           <Checkbox
             id="shippingTheSameAsBilling"
             checked={billingAddressSameAsShipping}
-            disabled={Boolean(paymentData || (!user && (!email || Boolean(emailEditable))))}
+            disabled={Boolean(isProcessingPayment || (!user && (!email || Boolean(emailEditable))))}
             onCheckedChange={(state) => {
               setBillingAddressSameAsShipping(state as boolean)
             }}
@@ -240,7 +245,7 @@ export const CheckoutPage: React.FC = () => {
                   actions={
                     <Button
                       variant={'outline'}
-                      disabled={Boolean(paymentData)}
+                      disabled={isProcessingPayment}
                       onClick={(e) => {
                         e.preventDefault()
                         setShippingAddress(undefined)
@@ -270,86 +275,33 @@ export const CheckoutPage: React.FC = () => {
           </>
         )}
 
-        {!paymentData && (
-          <Button
-            className="self-start"
-            disabled={!canGoToPayment}
-            onClick={(e) => {
-              e.preventDefault()
-              void initiatePaymentIntent('stripe')
-            }}
-          >
-            Go to payment
-          </Button>
-        )}
-
-        {!paymentData?.['clientSecret'] && error && (
-          <div className="my-8">
-            <Message error={error} />
-
-            <Button
-              onClick={(e) => {
-                e.preventDefault()
-                router.refresh()
-              }}
-              variant="default"
-            >
-              Try again
-            </Button>
-          </div>
-        )}
-
-        <Suspense fallback={<React.Fragment />}>
-          {/* @ts-ignore */}
-          {paymentData && paymentData?.['clientSecret'] && (
-            <div className="pb-16">
-              <h2 className="font-medium text-3xl">Payment</h2>
-              {error && <p>{`Error: ${error}`}</p>}
-              <Elements
-                options={{
-                  appearance: {
-                    theme: 'stripe',
-                    variables: {
-                      borderRadius: '6px',
-                      colorPrimary: '#858585',
-                      gridColumnSpacing: '20px',
-                      gridRowSpacing: '20px',
-                      colorBackground: theme === 'dark' ? '#0a0a0a' : cssVariables.colors.base0,
-                      colorDanger: cssVariables.colors.error500,
-                      colorDangerText: cssVariables.colors.error500,
-                      colorIcon:
-                        theme === 'dark' ? cssVariables.colors.base0 : cssVariables.colors.base1000,
-                      colorText: theme === 'dark' ? '#858585' : cssVariables.colors.base1000,
-                      colorTextPlaceholder: '#858585',
-                      fontFamily: 'Geist, sans-serif',
-                      fontSizeBase: '16px',
-                      fontWeightBold: '600',
-                      fontWeightNormal: '500',
-                      spacingUnit: '4px',
-                    },
-                  },
-                  clientSecret: paymentData['clientSecret'] as string,
-                }}
-                stripe={stripe}
-              >
-                <div className="flex flex-col gap-8">
-                  <CheckoutForm
-                    customerEmail={email}
-                    billingAddress={billingAddress}
-                    setProcessingPayment={setProcessingPayment}
-                  />
-                  <Button
-                    variant="ghost"
-                    className="self-start"
-                    onClick={() => setPaymentData(null)}
-                  >
-                    Cancel payment
-                  </Button>
-                </div>
-              </Elements>
-            </div>
+        <fieldset className="flex flex-col gap-3" disabled={isProcessingPayment}>
+          <legend className="mb-3 font-medium text-3xl">{text('Payment method')}</legend>
+          {options.length === 0 && billingAddress && (
+            <p>{text('No payment methods are available for this order.')}</p>
           )}
-        </Suspense>
+          {options.map((option) => (
+            <label key={option.method} className="flex items-center gap-3 rounded-lg border p-4">
+              <input
+                type="radio"
+                name="paymentMethod"
+                value={option.method}
+                checked={selectedOption?.method === option.method}
+                onChange={() => setSelectedMethod(option.method)}
+              />
+              <span className="grow">{text(stripeMethods[option.method])}</span>
+              <Price as="span" amount={option.amount} currencyCode={option.currency} />
+            </label>
+          ))}
+        </fieldset>
+        {error && <Message error={error} />}
+        <Button
+          className="self-start"
+          disabled={!canGoToPayment || isProcessingPayment}
+          onClick={() => void goToPayment()}
+        >
+          {text('Continue to Stripe')}
+        </Button>
       </div>
 
       {!cartIsEmpty && (
@@ -359,7 +311,7 @@ export const CheckoutPage: React.FC = () => {
             if (typeof item.product === 'object' && item.product) {
               const {
                 product,
-                product: { id, meta, title, gallery },
+                product: { meta, title, gallery },
                 quantity,
                 variant,
               } = item
@@ -441,7 +393,7 @@ export const CheckoutPage: React.FC = () => {
           <hr />
           <div className="flex justify-between items-center gap-2">
             <span className="uppercase">Total</span>{' '}
-            <Price className="text-3xl font-medium" amount={cart.subtotal || 0} />
+            <Price className="text-3xl font-medium" amount={subtotal ?? cart.subtotal ?? 0} />
           </div>
         </div>
       )}

@@ -17,7 +17,7 @@ test.describe('Frontend', () => {
     cardNumber: '5454 5454 5454 5454',
     expiryDate: '0330',
     cvc: '737',
-    postcode: 'WS11 1DB',
+    postcode: '10001',
   }
   test.beforeAll(async ({ browser, request }, testInfo) => {
     const context = await browser.newContext()
@@ -457,12 +457,18 @@ test.describe('Frontend', () => {
       data: {
         title: 'Test Product With Variants',
         slug: 'test-product-variants',
+        sku: 'test-product-variants',
+        visibility: 'visible',
+        weight: 1,
+        width: 1,
+        height: 1,
+        length: 1,
         enableVariants: true,
         variantTypes: [variantTypeID],
         inventory: 100,
         _status: 'published',
         layout: [],
-        gallery: [imageID],
+        gallery: [{ image: imageID }],
         priceInUSDEnabled: true,
         priceInUSD: 1000,
       },
@@ -498,10 +504,16 @@ test.describe('Frontend', () => {
       data: {
         title: 'Test Product',
         slug: 'test-product',
+        sku: 'test-product',
+        visibility: 'visible',
+        weight: 1,
+        width: 1,
+        height: 1,
+        length: 1,
         inventory: 100,
         _status: 'published',
         layout: [],
-        gallery: [imageID],
+        gallery: [{ image: imageID }],
         priceInUSDEnabled: true,
         priceInUSD: 1000,
       },
@@ -511,10 +523,16 @@ test.describe('Frontend', () => {
       data: {
         title: 'No Inventory Product',
         slug: 'no-inventory-product',
+        sku: 'no-inventory-product',
+        visibility: 'visible',
+        weight: 1,
+        width: 1,
+        height: 1,
+        length: 1,
         inventory: 0,
         _status: 'published',
         layout: [],
-        gallery: [imageID],
+        gallery: [{ image: imageID }],
         priceInUSDEnabled: true,
         priceInUSD: 1000,
       },
@@ -610,15 +628,16 @@ test.describe('Frontend', () => {
 
     const { cardNumber, expiryDate, cvc, postcode } = paymentDetails
 
-    const stripeIframe = page.frameLocator('iframe[title="Secure payment input frame"]')
-
-    await stripeIframe.locator('#Field-numberInput').fill(cardNumber)
-    await stripeIframe.locator('#Field-expiryInput').fill(expiryDate)
-    await stripeIframe.locator('#Field-cvcInput').fill(cvc)
-    await stripeIframe.locator('#Field-postalCodeInput').fill(postcode)
-
-    const payNowButton = page.getByRole('button', { name: 'Pay now' })
-    await payNowButton.click()
+    await page.getByRole('button', { name: 'Continue to Stripe' }).click()
+    await page.waitForURL('https://checkout.stripe.com/**')
+    await page.locator('#cardNumber').fill(cardNumber)
+    await page.locator('#cardExpiry').fill(expiryDate)
+    await page.locator('#cardCvc').fill(cvc)
+    const name = page.locator('#billingName')
+    if (await name.isVisible()) await name.fill('Checkout Customer')
+    const postalCode = page.locator('#billingPostalCode')
+    if (await postalCode.isVisible()) await postalCode.fill(postcode)
+    await page.getByRole('button', { name: /^pay/i }).click()
 
     await page.waitForURL(/\/orders/)
     await expect(page).toHaveURL(/\/orders/)

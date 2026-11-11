@@ -117,4 +117,48 @@ export const ptBR = {
   'Stock Keeping Unit - must be unique': 'Código de estoque (SKU) - deve ser único',
   'Product Details': 'Detalhes do produto',
   Content: 'Conteúdo',
+  Settings: 'Configurações',
+  'Payment Methods': 'Métodos de pagamento',
+  'Stripe secret key': 'Chave secreta do Stripe',
+  'Stripe webhook signing secret': 'Segredo de assinatura do webhook do Stripe',
+  'Enter a Stripe API secret key starting with sk_test_ or sk_live_. Leave blank to keep the current key.':
+    'Informe uma chave secreta do Stripe que comece com sk_test_ ou sk_live_. Deixe em branco para manter a chave atual.',
+  'Enter the signing secret for /api/payments/stripe/webhooks. Leave blank to keep the current secret.':
+    'Informe o segredo de assinatura de /api/payments/stripe/webhooks. Deixe em branco para manter o segredo atual.',
+  'Enable the same methods in the Stripe Dashboard. Pix and Boleto require an eligible account.':
+    'Ative os mesmos métodos no painel do Stripe. Pix e boleto exigem uma conta elegível.',
+  'USD to BRL exchange rate': 'Taxa de câmbio de USD para BRL',
+  'Amount in BRL per 1 USD. Required for Pix and Boleto. Card payments stay in USD.':
+    'Valor em reais para 1 dólar. Obrigatório para Pix e boleto. Os pagamentos com cartão continuam em USD.',
+  'Enter a positive exchange rate to enable Pix or Boleto.':
+    'Informe uma taxa de câmbio positiva para ativar Pix ou boleto.',
+  'Enter a valid Stripe secret key.': 'Informe uma chave secreta do Stripe válida.',
+  'Enter a valid Stripe webhook signing secret.':
+    'Informe um segredo de assinatura do webhook do Stripe válido.',
+  'Configure both Stripe credentials before enabling payment methods.':
+    'Configure as duas credenciais do Stripe antes de ativar os métodos de pagamento.',
+  Card: 'Cartão',
+  Boleto: 'Boleto',
+  Pix: 'Pix',
+  'Payment method': 'Método de pagamento',
+  'Continue to Stripe': 'Continuar para o Stripe',
+  'No payment methods are available for this order.':
+    'Nenhum método de pagamento está disponível para este pedido.',
+  'An error occurred while initiating payment.': 'Ocorreu um erro ao iniciar o pagamento.',
+  'One or more items in your cart are out of stock.':
+    'Um ou mais itens do seu carrinho estão sem estoque.',
+  'Payment is pending. Your order will be confirmed after Stripe verifies the payment.':
+    'O pagamento está pendente. Seu pedido será confirmado após a verificação pelo Stripe.',
+  'This payment session is still open.': 'Esta sessão de pagamento ainda está aberta.',
+  'This payment session is no longer available.':
+    'Esta sessão de pagamento não está mais disponível.',
+  'Cancel payment session': 'Cancelar sessão de pagamento',
+  'Check payment status': 'Consultar status do pagamento',
+  'Return to checkout': 'Voltar para o checkout',
+  'Order total': 'Total do pedido',
+  'Checkout session ID': 'ID da sessão de pagamento',
+  'Payment status': 'Status do pagamento',
+  'Payment confirmed.': 'Pagamento confirmado.',
+  'View order': 'Ver pedido',
+  'The payment session could not be cancelled.': 'Não foi possível cancelar a sessão de pagamento.',
 } as const

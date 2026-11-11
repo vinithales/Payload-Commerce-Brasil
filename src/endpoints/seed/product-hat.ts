@@ -19,6 +19,10 @@ export const productHatData: (args: ProductArgs) => RequiredDataFromCollectionSl
 }) => {
   return {
     visibility: 'visible',
+    weight: 0.2,
+    width: 20,
+    height: 12,
+    length: 25,
     sku: 'DEMO-HAT-001',
     meta: {
       title: 'Hat | Payload Ecommerce Template',

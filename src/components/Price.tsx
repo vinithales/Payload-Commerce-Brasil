@@ -46,7 +46,11 @@ export const Price = ({
   if (typeof amount === 'number') {
     return (
       <Element className={className} suppressHydrationWarning>
-        {formatCurrency(amount, { currency: currencyToUse })}
+        {currencyCodeFromProps === 'BRL' && !currencyToUse
+          ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+              amount / 100,
+            )
+          : formatCurrency(amount, { currency: currencyToUse })}
       </Element>
     )
   }

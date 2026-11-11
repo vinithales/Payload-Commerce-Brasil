@@ -70,6 +70,7 @@ export const Users: CollectionConfig = {
       type: 'join',
       collection: 'carts',
       on: 'customer',
+      where: { purchasedAt: { exists: false } },
       admin: {
         allowCreate: false,
         defaultColumns: ['id', 'createdAt', 'total', 'currency', 'items'],

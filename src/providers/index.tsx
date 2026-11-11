@@ -1,9 +1,9 @@
 import { AuthProvider } from '@/providers/Auth'
 import { EcommerceProvider } from '@payloadcms/plugin-ecommerce/client/react'
-import { stripeAdapterClient } from '@payloadcms/plugin-ecommerce/payments/stripe'
 import React from 'react'
 
 import { SonnerProvider } from '@/providers/Sonner'
+import { cartStorageKey } from '@/payments/methods'
 import { HeaderThemeProvider } from './HeaderTheme'
 import { ThemeProvider } from './Theme'
 
@@ -17,6 +17,7 @@ export const Providers: React.FC<{
           <SonnerProvider />
           <EcommerceProvider
             enableVariants={true}
+            syncLocalStorage={{ key: cartStorageKey }}
             api={{
               cartsFetchQuery: {
                 depth: 2,
@@ -36,9 +37,7 @@ export const Providers: React.FC<{
               },
             }}
             paymentMethods={[
-              stripeAdapterClient({
-                publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
-              }),
+              { name: 'stripe', label: 'Stripe', initiatePayment: true, confirmOrder: true },
             ]}
           >
             {children}

@@ -22,6 +22,10 @@ export const productTshirtData: (
 }) => {
   return {
     visibility: 'visible',
+    weight: 0.2,
+    width: 25,
+    height: 3,
+    length: 30,
     sku: 'DEMO-TSHIRT-001',
     enableVariants: true,
     variantTypes: variantTypes,

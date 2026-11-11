@@ -1,4 +1,4 @@
-import type { CollectionSlug, GlobalSlug, Payload, PayloadRequest, File } from 'payload'
+import type { CollectionSlug, Payload, PayloadRequest, File } from 'payload'
 
 import { contactFormData } from './contact-form'
 import { contactPageData } from './contact-page'
@@ -41,7 +41,7 @@ const colorVariantOptions = [
   { label: 'White', value: 'white' },
 ]
 
-const globals: GlobalSlug[] = ['header', 'footer']
+const globals = ['header', 'footer'] as const
 
 const baseAddressUSData: Transaction['billingAddress'] = {
   title: 'Dr.',

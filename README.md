@@ -203,7 +203,17 @@ By default the template ships with support only for USD however you can change t
 
 ## Stripe
 
-By default we ship with the Stripe adapter configured, so you'll need to setup the `secretKey`, `publishableKey` and `webhookSecret` from your Stripe dashboard. Follow [Stripe's guide](https://docs.stripe.com/get-started/api-request?locale=en-GB) on how to set this up.
+1. In the Payload admin, open **Settings → Payment Methods → Stripe**. Enter your [Stripe secret key](https://docs.stripe.com/keys) and the signing secret for the webhook below. Saved credentials are encrypted with `PAYLOAD_SECRET`. Re-enter them if that secret changes.
+2. In Stripe, create a [webhook endpoint](https://docs.stripe.com/webhooks) at `<store URL>/api/payments/stripe/webhooks` for `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, and `checkout.session.expired`. Use the same Stripe account and mode for both credentials. Set `NEXT_PUBLIC_SERVER_URL` to the public store URL so Stripe can return customers to the store.
+3. Enable the desired methods in Stripe and Payload. Card charges use the existing USD catalog. For Pix or Boleto, enter the number of Brazilian reais per US dollar. The checkout shows the BRL quote for Brazilian billing addresses. Stripe account eligibility and payment limits still apply. See [Pix](https://docs.stripe.com/payments/pix) and [Boleto](https://docs.stripe.com/payments/boleto).
+
+Stripe hosts payment entry. The webhook confirms paid orders, so issuing a Boleto or starting a Pix payment leaves the transaction pending until Stripe verifies it. Changes to enabled methods apply to new checkout sessions.
+
+`STRIPE_SECRET_KEY` and `STRIPE_WEBHOOKS_SIGNING_SECRET` remain available as fallbacks. Hosted Checkout uses the server-side secret key and webhook signing secret.
+
+For local sandbox testing, run `npm run stripe-webhooks` and enter the signing secret printed by the Stripe CLI. Use Stripe's [test payment details](https://docs.stripe.com/testing).
+
+For an existing PostgreSQL deployment with schema push disabled, run `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/stripe-checkout-schema.sql` before deploying the Stripe checkout. For integration tests, set `STRIPE_CHECKOUT_TEST_DATABASE_URL` to a disposable database and run `npm run test:int -- --no-file-parallelism`.
 
 ## Tests
 

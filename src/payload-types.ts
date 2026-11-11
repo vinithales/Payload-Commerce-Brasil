@@ -131,10 +131,12 @@ export interface Config {
   globals: {
     header: Header;
     footer: Footer;
+    'payment-methods': PaymentMethod;
   };
   globalsSelect: {
     header: HeaderSelect<false> | HeaderSelect<true>;
     footer: FooterSelect<false> | FooterSelect<true>;
+    'payment-methods': PaymentMethodsSelect<false> | PaymentMethodsSelect<true>;
   };
   locale: null;
   widgets: {
@@ -255,7 +257,7 @@ export interface Order {
   transactions?: (number | Transaction)[] | null;
   status?: OrderStatus;
   amount?: number | null;
-  currency?: 'USD' | null;
+  currency?: ('USD' | 'BRL') | null;
   accessToken?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -917,6 +919,18 @@ export interface Transaction {
   stripe?: {
     customerID?: string | null;
     paymentIntentID?: string | null;
+    checkoutSessionID?: string | null;
+    checkoutCartKey?: string | null;
+    checkoutToken?: string | null;
+    checkoutSnapshot?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
   };
   billingAddress?: {
     title?: string | null;
@@ -937,7 +951,7 @@ export interface Transaction {
   order?: (number | null) | Order;
   cart?: (number | null) | Cart;
   amount?: number | null;
-  currency?: 'USD' | null;
+  currency?: ('USD' | 'BRL') | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1733,6 +1747,10 @@ export interface TransactionsSelect<T extends boolean = true> {
     | {
         customerID?: T;
         paymentIntentID?: T;
+        checkoutSessionID?: T;
+        checkoutCartKey?: T;
+        checkoutToken?: T;
+        checkoutSnapshot?: T;
       };
   billingAddress?:
     | T
@@ -1849,6 +1867,37 @@ export interface Footer {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payment-methods".
+ */
+export interface PaymentMethod {
+  id: number;
+  /**
+   * Enable the same methods in the Stripe Dashboard. Pix and Boleto require an eligible account.
+   */
+  stripe?: {
+    /**
+     * Enter a Stripe API secret key starting with sk_test_ or sk_live_. Leave blank to keep the current key.
+     */
+    secretKey?: string | null;
+    /**
+     * Enter the signing secret for /api/payments/stripe/webhooks. Leave blank to keep the current secret.
+     */
+    webhookSecret?: string | null;
+    encryptedSecretKey?: string | null;
+    encryptedWebhookSecret?: string | null;
+    card?: boolean | null;
+    boleto?: boolean | null;
+    pix?: boolean | null;
+    /**
+     * Amount in BRL per 1 USD. Required for Pix and Boleto. Card payments stay in USD.
+     */
+    brlExchangeRate?: number | null;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "header_select".
  */
 export interface HeaderSelect<T extends boolean = true> {
@@ -1888,6 +1937,27 @@ export interface FooterSelect<T extends boolean = true> {
               label?: T;
             };
         id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payment-methods_select".
+ */
+export interface PaymentMethodsSelect<T extends boolean = true> {
+  stripe?:
+    | T
+    | {
+        secretKey?: T;
+        webhookSecret?: T;
+        encryptedSecretKey?: T;
+        encryptedWebhookSecret?: T;
+        card?: T;
+        boleto?: T;
+        pix?: T;
+        brlExchangeRate?: T;
       };
   updatedAt?: T;
   createdAt?: T;

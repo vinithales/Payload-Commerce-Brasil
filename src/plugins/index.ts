@@ -1,21 +1,22 @@
+import { ecommercePlugin } from '@payloadcms/plugin-ecommerce'
 import { formBuilderPlugin } from '@payloadcms/plugin-form-builder'
 import { seoPlugin } from '@payloadcms/plugin-seo'
-import { Plugin } from 'payload'
 import { GenerateTitle, GenerateURL } from '@payloadcms/plugin-seo/types'
 import { FixedToolbarFeature, HeadingFeature, lexicalEditor } from '@payloadcms/richtext-lexical'
-import { ecommercePlugin } from '@payloadcms/plugin-ecommerce'
+import { Plugin } from 'payload'
 
-import { stripeAdapter } from '@payloadcms/plugin-ecommerce/payments/stripe'
-
-import { Page, Product } from '@/payload-types'
-import { getServerSideURL } from '@/utilities/getURL'
-import { ProductsCollection } from '@/collections/Products'
-import { adminOrPublishedStatus } from '@/access/adminOrPublishedStatus'
 import { adminOnlyFieldAccess } from '@/access/adminOnlyFieldAccess'
+import { adminOrPublishedStatus } from '@/access/adminOrPublishedStatus'
 import { customerOnlyFieldAccess } from '@/access/customerOnlyFieldAccess'
 import { isAdmin } from '@/access/isAdmin'
 import { isDocumentOwner } from '@/access/isDocumentOwner'
+import { ProductsCollection } from '@/collections/Products'
+import { Page, Product, Variant } from '@/payload-types'
+import { checkoutCurrencyFields } from '@/payments/fields'
+import { stripeCheckout } from '@/payments/stripeCheckout'
 import { adminTranslationsPlugin } from '@/translations/adminPlugin'
+import { getCartItemPrices } from '@/utilities/getCartItemPrices'
+import { getServerSideURL } from '@/utilities/getURL'
 
 const generateTitle: GenerateTitle<Product | Page> = ({ doc }) => {
   return doc?.title ? `${doc.title} | Payload Ecommerce Template` : 'Payload Ecommerce Template'
@@ -92,7 +93,7 @@ export const plugins: Plugin[] = [
       ordersCollectionOverride: ({ defaultCollection }) => ({
         ...defaultCollection,
         fields: [
-          ...defaultCollection.fields,
+          ...checkoutCurrencyFields(defaultCollection.fields),
           {
             name: 'accessToken',
             type: 'text',
@@ -117,16 +118,73 @@ export const plugins: Plugin[] = [
       }),
     },
     payments: {
-      paymentMethods: [
-        stripeAdapter({
-          secretKey: process.env.STRIPE_SECRET_KEY!,
-          publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
-          webhookSecret: process.env.STRIPE_WEBHOOKS_SIGNING_SECRET!,
-        }),
-      ],
+      paymentMethods: [stripeCheckout],
+    },
+    transactions: {
+      transactionsCollectionOverride: ({ defaultCollection }) => ({
+        ...defaultCollection,
+        fields: checkoutCurrencyFields(defaultCollection.fields),
+      }),
     },
     products: {
       productsCollectionOverride: ProductsCollection,
+    },
+    carts: {
+      cartsCollectionOverride: ({ defaultCollection }) => ({
+        ...defaultCollection,
+        hooks: {
+          ...defaultCollection.hooks,
+          beforeChange: [
+            ...(defaultCollection.hooks?.beforeChange ?? []),
+            async ({ data, originalDoc, req }) => {
+              const items = data.items ?? originalDoc?.items ?? []
+              let subtotal = 0
+
+              for (const item of items) {
+                if (!item.product) throw new Error('Cart item is missing product reference')
+                const productId = typeof item.product === 'object' ? item.product.id : item.product
+                const product = await req.payload.findByID({
+                  collection: 'products',
+                  id: productId,
+                  depth: 0,
+                  req,
+                })
+
+                if (!product) throw new Error('Product not found')
+
+                let variant: Variant | undefined
+
+                if (item.variant) {
+                  if (!product.enableVariants) {
+                    throw new Error('Product does not have variants enabled')
+                  }
+                  const variantId =
+                    typeof item.variant === 'object' ? item.variant.id : item.variant
+
+                  variant = await req.payload.findByID({
+                    collection: 'variants',
+                    id: variantId,
+                    depth: 0,
+                    req,
+                  })
+                }
+
+                const { regularAmount, promotionalAmount } = getCartItemPrices(product, variant)
+                const unitPrice = promotionalAmount ?? regularAmount
+
+                if (typeof unitPrice !== 'number' || !Number.isFinite(unitPrice)) {
+                  throw new Error('Invalid cart item price')
+                }
+
+                subtotal += unitPrice * item.quantity
+              }
+              data.subtotal = subtotal
+
+              return data
+            },
+          ],
+        },
+      }),
     },
   }),
   adminTranslationsPlugin,
