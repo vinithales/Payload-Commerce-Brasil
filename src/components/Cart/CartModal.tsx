@@ -16,11 +16,12 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import React, { useEffect, useMemo, useState } from 'react'
 
+import { Button } from '@/components/ui/button'
+import { Product } from '@/payload-types'
+import { getCartItemPrices } from '@/utilities/getCartItemPrices'
 import { DeleteItemButton } from './DeleteItemButton'
 import { EditItemQuantityButton } from './EditItemQuantityButton'
 import { OpenCartButton } from './OpenCart'
-import { Button } from '@/components/ui/button'
-import { Product } from '@/payload-types'
 
 export function CartModal() {
   const { cart } = useCart()
@@ -67,6 +68,8 @@ export function CartModal() {
                   if (typeof product !== 'object' || !item || !product || !product.slug)
                     return <React.Fragment key={i} />
 
+                  const { regularAmount, promotionalAmount } = getCartItemPrices(product, variant)
+
                   const metaImage =
                     product.meta?.image && typeof product.meta?.image === 'object'
                       ? product.meta.image
@@ -78,13 +81,10 @@ export function CartModal() {
                       : undefined
 
                   let image = firstGalleryImage || metaImage
-                  let price = product.priceInUSD
 
                   const isVariant = Boolean(variant) && typeof variant === 'object'
 
                   if (isVariant) {
-                    price = variant?.priceInUSD
-
                     const imageVariant = product.gallery?.find((item) => {
                       if (!item.variantOption) return false
                       const variantOptionID =
@@ -141,12 +141,18 @@ export function CartModal() {
                             ) : null}
                           </div>
                         </Link>
-                        <div className="flex h-16 flex-col justify-between">
-                          {typeof price === 'number' && (
+                        <div className="flex flex-wrap items-baseline gap-2">
+                          {typeof regularAmount === 'number' && (
                             <Price
-                              amount={price}
-                              className="flex justify-end space-y-2 text-right text-sm"
+                              amount={regularAmount}
+                              as="span"
+                              className={
+                                promotionalAmount !== undefined ? 'text-muted-foreground line-through' : undefined
+                              }
                             />
+                          )}
+                          {promotionalAmount !== undefined && (
+                            <Price amount={promotionalAmount} as="span" className="font-semibold" />
                           )}
                           <div className="ml-auto flex h-9 flex-row items-center rounded-lg border">
                             <EditItemQuantityButton item={item} type="minus" />

@@ -47,20 +47,24 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     }
   }, [searchParams, api, gallery])
 
+  const currentImage = gallery[current]?.image
+
   return (
     <div>
-      <div className="relative w-full overflow-hidden mb-8">
-        <Media
-          resource={gallery[current].image}
-          className="w-full"
-          imgClassName="w-full rounded-lg"
-        />
-      </div>
+      {currentImage && typeof currentImage === 'object' && (
+        <div className="relative w-full overflow-hidden mb-8">
+          <Media
+            resource={currentImage}
+            className="w-full"
+            imgClassName="w-full rounded-lg"
+          />
+        </div>
+      )}
 
       <Carousel setApi={setApi} className="w-full" opts={{ align: 'start', loop: false }}>
         <CarouselContent>
           {gallery.map((item, i) => {
-            if (typeof item.image !== 'object') return null
+            if (!item.image || typeof item.image !== 'object') return null
 
             return (
               <CarouselItem

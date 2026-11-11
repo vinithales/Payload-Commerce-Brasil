@@ -26,7 +26,8 @@ export async function generateMetadata({ params }: Args): Promise<Metadata> {
 
   if (!product) return notFound()
 
-  const gallery = product.gallery?.filter((item) => typeof item.image === 'object') || []
+  const gallery =
+    product.gallery?.filter((item) => item.image && typeof item.image === 'object') || []
 
   const metaImage = typeof product.meta?.image === 'object' ? product.meta?.image : undefined
   const canIndex = product._status === 'published'
@@ -67,7 +68,7 @@ export default async function ProductPage({ params }: Args) {
 
   const gallery =
     product.gallery
-      ?.filter((item) => typeof item.image === 'object')
+      ?.filter((item) => item.image && typeof item.image === 'object')
       .map((item) => ({
         ...item,
         image: item.image as Media,

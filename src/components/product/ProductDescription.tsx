@@ -17,35 +17,20 @@ export function ProductDescription({ product }: { product: Product }) {
     highestAmount = 0
   const priceField = `priceIn${currency.code}` as keyof Product
   const hasVariants = product.enableVariants && Boolean(product.variants?.docs?.length)
+  const promotionalAmount = product.promotionalPriceInUSD
+  const hasPromotion =
+    !hasVariants && currency.code === 'USD' && typeof promotionalAmount === 'number'
 
   if (hasVariants) {
     const priceField = `priceIn${currency.code}` as keyof Variant
-    const variantsOrderedByPrice = product.variants?.docs
-      ?.filter((variant) => variant && typeof variant === 'object')
-      .sort((a, b) => {
-        if (
-          typeof a === 'object' &&
-          typeof b === 'object' &&
-          priceField in a &&
-          priceField in b &&
-          typeof a[priceField] === 'number' &&
-          typeof b[priceField] === 'number'
-        ) {
-          return a[priceField] - b[priceField]
-        }
+    const variantPrices = (product.variants?.docs ?? [])
+      .filter((variant): variant is Variant => Boolean(variant) && typeof variant === 'object')
+      .map((variant) => variant[priceField])
+      .filter((price): price is number => typeof price === 'number')
 
-        return 0
-      }) as Variant[]
-
-    const lowestVariant = variantsOrderedByPrice[0][priceField]
-    const highestVariant = variantsOrderedByPrice[variantsOrderedByPrice.length - 1][priceField]
-    if (
-      variantsOrderedByPrice &&
-      typeof lowestVariant === 'number' &&
-      typeof highestVariant === 'number'
-    ) {
-      lowestAmount = lowestVariant
-      highestAmount = highestVariant
+    if (variantPrices.length) {
+      lowestAmount = Math.min(...variantPrices)
+      highestAmount = Math.max(...variantPrices)
     }
   } else if (product[priceField] && typeof product[priceField] === 'number') {
     amount = product[priceField]
@@ -53,7 +38,7 @@ export function ProductDescription({ product }: { product: Product }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-medium">{product.title}</h1>
           {product.sku && (
@@ -61,8 +46,23 @@ export function ProductDescription({ product }: { product: Product }) {
           )}
         </div>
 
-        <div className="uppercase font-mono">
-          {hasVariants ? (
+        <div className="flex items-baseline gap-2 uppercase font-mono">
+          {hasPromotion ? (
+            <>
+              {amount > 0 && (
+                <Price
+                  amount={amount}
+                  as="span"
+                  className="text-sm text-muted-foreground line-through"
+                />
+              )}
+              <Price
+                amount={promotionalAmount}
+                as="span"
+                className="text-xl font-semibold"
+              />
+            </>
+          ) : hasVariants ? (
             <Price highestAmount={highestAmount} lowestAmount={lowestAmount} />
           ) : (
             <Price amount={amount} />
